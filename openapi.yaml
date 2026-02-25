@@ -1,0 +1,346 @@
+openapi: "3.0.3"
+info:
+  title: Food Delivery - Catalog Service API
+  description: |
+    Manages restaurants and menu items for the food delivery platform.
+    
+    **Inter-service communication:**
+    - Calls `Auth Service` to verify JWT tokens (POST /api/v1/auth/verify)
+    - Exposes `/api/v1/menu-items/bulk-lookup` consumed by `Order Service`
+  version: "1.0.0"
+  contact:
+    name: SE4010 Group - Catalog Service Owner
+servers:
+  - url: http://localhost:8000
+    description: Local development
+  - url: https://catalog.your-ecs-url.amazonaws.com
+    description: AWS ECS Production
+
+tags:
+  - name: Health
+    description: Health and readiness checks
+  - name: Restaurants
+    description: Restaurant management
+  - name: Menu Items
+    description: Menu item management (includes bulk-lookup for Order Service)
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health Check
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              example:
+                status: healthy
+                service: catalog-service
+                version: "1.0.0"
+                database: healthy
+                environment: production
+
+  /api/v1/restaurants:
+    get:
+      tags: [Restaurants]
+      summary: List all active restaurants
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 10, maximum: 100 }
+        - name: cuisine_type
+          in: query
+          schema: { type: string }
+        - name: is_active
+          in: query
+          schema: { type: boolean, default: true }
+      responses:
+        "200":
+          description: Paginated list of restaurants
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginatedRestaurants" }
+    post:
+      tags: [Restaurants]
+      summary: Create a restaurant
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RestaurantCreate" }
+      responses:
+        "201":
+          description: Restaurant created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RestaurantResponse" }
+        "401":
+          description: Unauthorized - invalid or missing JWT
+
+  /api/v1/restaurants/{restaurant_id}:
+    get:
+      tags: [Restaurants]
+      summary: Get restaurant with full menu
+      parameters:
+        - name: restaurant_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Restaurant with menu items
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RestaurantWithMenu" }
+        "404":
+          description: Not found
+    put:
+      tags: [Restaurants]
+      summary: Update restaurant
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: restaurant_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RestaurantUpdate" }
+      responses:
+        "200":
+          description: Updated restaurant
+    delete:
+      tags: [Restaurants]
+      summary: Soft-delete restaurant
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: restaurant_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /api/v1/menu-items:
+    get:
+      tags: [Menu Items]
+      summary: List menu items
+      parameters:
+        - name: restaurant_id
+          in: query
+          schema: { type: string }
+        - name: category
+          in: query
+          schema: { type: string }
+        - name: is_vegetarian
+          in: query
+          schema: { type: boolean }
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 10 }
+      responses:
+        "200":
+          description: Paginated menu items
+    post:
+      tags: [Menu Items]
+      summary: Create menu item
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MenuItemCreate" }
+      responses:
+        "201":
+          description: Created menu item
+
+  /api/v1/menu-items/{item_id}:
+    get:
+      tags: [Menu Items]
+      summary: Get single menu item
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Menu item
+        "404":
+          description: Not found
+    put:
+      tags: [Menu Items]
+      summary: Update menu item
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MenuItemUpdate" }
+      responses:
+        "200":
+          description: Updated
+    delete:
+      tags: [Menu Items]
+      summary: Delete menu item
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+  /api/v1/menu-items/bulk-lookup:
+    post:
+      tags: [Menu Items]
+      summary: "Bulk Item Lookup [Called by Order Service]"
+      description: |
+        **Inter-service endpoint.** Called by the Order Management Service when a 
+        user submits an order. Returns details and availability for a list of item IDs.
+        Used by the Order Service to calculate order totals and validate item availability.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                item_ids:
+                  type: array
+                  items: { type: string }
+                  example: ["item-uuid-1", "item-uuid-2"]
+      responses:
+        "200":
+          description: Available items and list of unavailable IDs
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BulkItemsResponse" }
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT obtained from the Auth Service
+
+  schemas:
+    RestaurantCreate:
+      type: object
+      required: [name, address]
+      properties:
+        name: { type: string, example: "Mario's Pizza" }
+        description: { type: string }
+        address: { type: string, example: "123 Main St, Colombo" }
+        phone: { type: string }
+        email: { type: string, format: email }
+        cuisine_type: { type: string, example: "Italian" }
+        delivery_time_minutes: { type: integer, default: 30 }
+        minimum_order: { type: number, default: 0 }
+
+    RestaurantUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+        is_active: { type: boolean }
+        delivery_time_minutes: { type: integer }
+
+    RestaurantResponse:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        address: { type: string }
+        cuisine_type: { type: string }
+        rating: { type: number }
+        is_active: { type: boolean }
+        delivery_time_minutes: { type: integer }
+        created_at: { type: string, format: date-time }
+
+    RestaurantWithMenu:
+      allOf:
+        - $ref: "#/components/schemas/RestaurantResponse"
+        - type: object
+          properties:
+            menu_items:
+              type: array
+              items: { $ref: "#/components/schemas/MenuItemResponse" }
+
+    PaginatedRestaurants:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/RestaurantResponse" }
+        total: { type: integer }
+        page: { type: integer }
+        size: { type: integer }
+        pages: { type: integer }
+
+    MenuItemCreate:
+      type: object
+      required: [name, price, restaurant_id]
+      properties:
+        restaurant_id: { type: string }
+        name: { type: string, example: "Margherita Pizza" }
+        description: { type: string }
+        price: { type: number, example: 12.99 }
+        category: { type: string, example: "Pizza" }
+        is_vegetarian: { type: boolean, default: false }
+        calories: { type: integer }
+        preparation_time_minutes: { type: integer, default: 15 }
+
+    MenuItemUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        price: { type: number }
+        is_available: { type: boolean }
+
+    MenuItemResponse:
+      type: object
+      properties:
+        id: { type: string }
+        restaurant_id: { type: string }
+        name: { type: string }
+        price: { type: number }
+        category: { type: string }
+        is_available: { type: boolean }
+        is_vegetarian: { type: boolean }
+        calories: { type: integer }
+        preparation_time_minutes: { type: integer }
+        created_at: { type: string, format: date-time }
+
+    BulkItemsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/MenuItemResponse" }
+        unavailable_ids:
+          type: array
+          items: { type: string }

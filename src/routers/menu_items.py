@@ -4,7 +4,6 @@ Includes /bulk-lookup used by the Order Service for inter-service communication.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from fastapi.security import HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import Optional
@@ -16,7 +15,7 @@ from ..schemas import (
     MenuItemCreate, MenuItemUpdate, MenuItemResponse,
     PaginatedResponse, BulkItemsRequest, BulkItemsResponse
 )
-from ..middleware import security, get_current_user, get_optional_user
+from ..middleware import get_current_user
 
 router = APIRouter()
 
@@ -65,12 +64,46 @@ async def get_menu_item(item_id: str, db: AsyncSession = Depends(get_db)):
     return item
 
 
+# ── Inter-Service Communication Endpoint ─────────────────────────────────────
+
+@router.post("/bulk-lookup", response_model=BulkItemsResponse, summary="Bulk Item Lookup (Order Service)")
+async def bulk_item_lookup(
+    payload: BulkItemsRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Internal endpoint called by the ORDER SERVICE when a user places an order.
+    Validates that all requested item IDs exist and are currently available.
+    Returns item details (including price) for order total calculation.
+
+    This is the primary inter-service communication point.
+    Called by: Order Management Service
+    """
+    result = await db.execute(
+        select(MenuItem).where(MenuItem.id.in_(payload.item_ids))
+    )
+    found_items = result.scalars().all()
+
+    found_ids = {item.id for item in found_items}
+    available_items = [i for i in found_items if i.is_available]
+    available_ids = {i.id for i in available_items}
+
+    unavailable_ids = [
+        iid for iid in payload.item_ids
+        if iid not in found_ids or iid not in available_ids
+    ]
+
+    return BulkItemsResponse(
+        items=[MenuItemResponse.model_validate(i) for i in available_items],
+        unavailable_ids=unavailable_ids,
+    )
+
+
 @router.post("", response_model=MenuItemResponse, status_code=status.HTTP_201_CREATED, summary="Create Menu Item")
 async def create_menu_item(
     payload: MenuItemCreate,
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(get_current_user),
-    credentials=Depends(security),
 ):
     """Protected. Verifies that the restaurant belongs to the requesting user."""
     res_result = await db.execute(select(Restaurant).where(Restaurant.id == payload.restaurant_id))
@@ -94,7 +127,6 @@ async def update_menu_item(
     payload: MenuItemUpdate,
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(get_current_user),
-    credentials=Depends(security),
 ):
     """Protected."""
     result = await db.execute(select(MenuItem).where(MenuItem.id == item_id))
@@ -115,7 +147,6 @@ async def delete_menu_item(
     item_id: str,
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(get_current_user),
-    credentials=Depends(security),
 ):
     result = await db.execute(select(MenuItem).where(MenuItem.id == item_id))
     item = result.scalar_one_or_none()
@@ -123,37 +154,3 @@ async def delete_menu_item(
         raise HTTPException(status_code=404, detail="Menu item not found")
     await db.delete(item)
     await db.flush()
-
-
-# ── Inter-Service Communication Endpoint ─────────────────────────────────────
-
-@router.post("/bulk-lookup", response_model=BulkItemsResponse, summary="Bulk Item Lookup (Order Service)")
-async def bulk_item_lookup(
-    payload: BulkItemsRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Internal endpoint called by the ORDER SERVICE when a user places an order.
-    Validates that all requested item IDs exist and are currently available.
-    Returns item details (including price) for order total calculation.
-
-    This is the primary inter-service communication point.
-    Called by: Order Management Service
-    """
-    result = await db.execute(
-        select(MenuItem).where(MenuItem.id.in_(payload.item_ids))
-    )
-    found_items = result.scalars().all()
-
-    found_ids = {item.id for item in found_items}
-    unavailable_ids = [
-        iid for iid in payload.item_ids
-        if iid not in found_ids or not next((i for i in found_items if i.id == iid), None).is_available
-    ]
-
-    available_items = [i for i in found_items if i.is_available]
-
-    return BulkItemsResponse(
-        items=[MenuItemResponse.model_validate(i) for i in available_items],
-        unavailable_ids=unavailable_ids,
-    )

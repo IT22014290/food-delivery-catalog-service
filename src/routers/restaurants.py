@@ -1,7 +1,6 @@
 """Restaurants CRUD endpoints"""
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from fastapi.security import HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import Optional
@@ -13,7 +12,7 @@ from ..schemas import (
     RestaurantCreate, RestaurantUpdate,
     RestaurantResponse, RestaurantWithMenuResponse, PaginatedResponse
 )
-from ..middleware import security, get_current_user, get_optional_user
+from ..middleware import get_current_user, get_optional_user
 
 router = APIRouter()
 
@@ -71,10 +70,10 @@ async def create_restaurant(
     payload: RestaurantCreate,
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(get_current_user),
-    credentials=Depends(security),
 ):
     """Protected. Requires valid JWT from Auth Service."""
-    restaurant = Restaurant(**payload.model_dump(), owner_user_id=user.get("user_id"))
+    data = payload.model_dump(exclude={"owner_user_id"})
+    restaurant = Restaurant(**data, owner_user_id=user.get("user_id"))
     db.add(restaurant)
     await db.flush()
     await db.refresh(restaurant)
@@ -87,7 +86,6 @@ async def update_restaurant(
     payload: RestaurantUpdate,
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(get_current_user),
-    credentials=Depends(security),
 ):
     """Protected. Only the owner or admin can update."""
     result = await db.execute(select(Restaurant).where(Restaurant.id == restaurant_id))
@@ -111,7 +109,6 @@ async def delete_restaurant(
     restaurant_id: str,
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(get_current_user),
-    credentials=Depends(security),
 ):
     """Protected. Soft-deletes by setting is_active=False."""
     result = await db.execute(select(Restaurant).where(Restaurant.id == restaurant_id))

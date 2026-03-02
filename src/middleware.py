@@ -6,7 +6,7 @@ Verifies JWT tokens by calling the Auth Service (inter-service communication).
 import os
 import logging
 import httpx
-from fastapi import HTTPException, status, Request
+from fastapi import HTTPException, status, Request, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
@@ -38,6 +38,10 @@ async def verify_token(
     Returns decoded user payload on success.
     Inter-service communication demo point.
     """
+    # Dev/test mode: bypass auth entirely when AUTH_REQUIRED=false
+    if os.getenv("AUTH_REQUIRED", "true").lower() == "false":
+        return {"user_id": "dev-user", "role": "admin"}
+
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -60,10 +64,7 @@ async def verify_token(
                 detail="Invalid or expired token",
             )
     except httpx.ConnectError:
-        logger.warning("Auth service unreachable — falling back to unverified mode")
-        # In dev/demo, allow requests through if Auth Service is down
-        if os.getenv("AUTH_REQUIRED", "true").lower() == "false":
-            return {"user_id": "dev-user", "role": "admin"}
+        logger.warning("Auth service unreachable")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service unavailable",
@@ -71,17 +72,18 @@ async def verify_token(
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> dict:
     """FastAPI dependency: returns current authenticated user."""
-    from fastapi.security import HTTPBearer
     return await verify_token(credentials)
 
 
 async def get_optional_user(
-    credentials: HTTPAuthorizationCredentials = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ) -> dict | None:
     """FastAPI dependency: returns user if authenticated, None otherwise (public routes)."""
+    if os.getenv("AUTH_REQUIRED", "true").lower() == "false":
+        return None
     if credentials is None:
         return None
     try:

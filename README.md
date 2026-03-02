@@ -87,8 +87,8 @@ docker run -p 8000:8000 \
 
 ### Run tests
 ```bash
-pip install pytest pytest-asyncio httpx pytest-cov
-pytest tests/ -v --cov=src
+pip install -r requirements-dev.txt
+pytest tests/ -v --cov=src --cov-report=term-missing
 ```
 
 ---
@@ -144,11 +144,20 @@ docker push YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/food-delivery-catalo
 6. Add Application Load Balancer for public access
 
 ### Step 4: Set GitHub Secrets
+Go to GitHub repo → Settings → Secrets and variables → Actions → New repository secret.
+
 ```
 AWS_ACCESS_KEY_ID     → Your IAM user access key
 AWS_SECRET_ACCESS_KEY → Your IAM user secret key
-SONAR_TOKEN           → From sonarcloud.io
-SNYK_TOKEN            → From snyk.io
+SONAR_TOKEN           → From sonarcloud.io (Projects → My Account → Security)
+SNYK_TOKEN            → From snyk.io (Account Settings → General → Auth Token)
+```
+
+### Step 5: Update sonar-project.properties
+Replace the placeholder values with your actual SonarCloud organization and project key:
+```
+sonar.projectKey=YOUR_GITHUB_USERNAME_catalog-service
+sonar.organization=YOUR_SONARCLOUD_ORG
 ```
 
 ---
@@ -188,9 +197,11 @@ catalog-service/
 ├── .github/
 │   └── workflows/
 │       └── ci-cd.yml    # GitHub Actions pipeline
-├── Dockerfile           # Multi-stage, non-root
-├── docker-compose.yml   # Local dev
-├── openapi.yaml         # API contract
-├── requirements.txt
-└── sonar-project.properties
+├── Dockerfile               # Multi-stage, non-root
+├── docker-compose.yml       # Local dev
+├── openapi.yaml             # API contract
+├── requirements.txt         # Runtime dependencies
+├── requirements-dev.txt     # Dev/test dependencies
+├── pytest.ini               # Pytest configuration
+└── sonar-project.properties # SonarCloud config
 ```

@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Catalog Service — Admin Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --card:     #1c2128;
+      --border:   #30363d;
+      --text:     #e6edf3;
+      --muted:    #8b949e;
+      --accent:   #f97316;
+      --accent2:  #ef4444;
+      --green:    #3fb950;
+      --blue:     #79b8ff;
+      --yellow:   #e3b341;
+      --red:      #ff7b72;
+      --radius:   10px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Top nav ── */
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 0 1.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand {
+      font-weight: 800;
+      font-size: 1rem;
+      background: linear-gradient(135deg, #f97316, #fbbf24);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      padding: 1rem 1.2rem 1rem 0;
+      white-space: nowrap;
+      margin-right: 1rem;
+      border-right: 1px solid var(--border);
+    }
+    .nav-links { display: flex; gap: 0; flex: 1; }
+    .nav-tab {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 500;
+      padding: 1.1rem 1rem;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .nav-tab:hover  { color: var(--text); }
+    .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .nav-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .auth-badge {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.7rem;
+      border-radius: 99px;
+      font-weight: 600;
+    }
+    .auth-badge.authed   { background: #0d2a1a; color: var(--green); border: 1px solid #1a4a2a; }
+    .auth-badge.unauthed { background: #2a0d0d; color: var(--red);   border: 1px solid #4a1a1a; }
+    .btn-docs {
+      font-size: 0.8rem;
+      padding: 0.35rem 0.9rem;
+      border-radius: var(--radius);
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .btn-docs:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* ── Layout ── */
+    main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ── Section titles ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+    .section-header h2 { font-size: 1.25rem; font-weight: 700; }
+    .section-header p  { font-size: 0.85rem; color: var(--muted); margin-top: 0.2rem; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.55rem 1.1rem; border-radius: var(--radius);
+      font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      border: 1px solid transparent; transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn:active { transform: none; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
+    .btn-outline  { background: var(--card); border-color: var(--border); color: var(--text); }
+    .btn-danger   { background: #2a0d0d; border-color: #4a1a1a; color: var(--red); }
+    .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.78rem; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: #444c56; }
+
+    /* ── Restaurant grid ── */
+    .filter-bar {
+      display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap;
+    }
+    .filter-bar input, .filter-bar select {
+      background: var(--card); border: 1px solid var(--border);
+      color: var(--text); border-radius: var(--radius);
+      padding: 0.55rem 0.85rem; font-size: 0.85rem; flex: 1; min-width: 160px;
+    }
+    .filter-bar input:focus, .filter-bar select:focus {
+      outline: none; border-color: var(--accent);
+    }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+    .rest-card { cursor: pointer; }
+    .rest-card-top {
+      display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem;
+    }
+    .rest-name  { font-weight: 700; font-size: 1rem; }
+    .rest-badge {
+      font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.5rem;
+      border-radius: 99px; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .badge-active   { background: #0d2a1a; color: var(--green); }
+    .badge-inactive { background: #2a0d0d; color: var(--red); }
+    .rest-cuisine { font-size: 0.78rem; color: var(--accent); font-weight: 600; margin-bottom: 0.4rem; }
+    .rest-desc    { font-size: 0.82rem; color: var(--muted); line-height: 1.5; margin-bottom: 0.75rem; }
+    .rest-meta    { display: flex; gap: 1rem; font-size: 0.78rem; color: var(--muted); }
+    .rest-meta span { display: flex; align-items: center; gap: 0.3rem; }
+
+    /* ── Restaurant detail modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7); z-index: 200;
+      align-items: center; justify-content: center; padding: 1rem;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 14px; width: 100%; max-width: 700px;
+      max-height: 85vh; overflow-y: auto;
+    }
+    .modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); position: sticky; top: 0;
+      background: var(--card); z-index: 1;
+    }
+    .modal-header h3 { font-size: 1.1rem; font-weight: 700; }
+    .modal-close {
+      background: none; border: none; color: var(--muted);
+      font-size: 1.2rem; cursor: pointer; padding: 0.2rem 0.5rem;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-body { padding: 1.25rem 1.5rem; }
+    .menu-section-title {
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted); margin: 1.25rem 0 0.75rem;
+    }
+    .menu-item-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.6rem 0; border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .menu-item-row:last-child { border-bottom: none; }
+    .menu-item-name { font-weight: 600; }
+    .menu-item-cat  { font-size: 0.72rem; color: var(--muted); }
+    .menu-item-price { font-weight: 700; color: var(--accent); white-space: nowrap; margin-left: 1rem; }
+    .menu-item-veg  {
+      font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 99px;
+      background: #0d2a1a; color: var(--green); font-weight: 700; margin-left: 0.4rem;
+    }
+
+    /* ── Forms ── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .form-group label { font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+    .form-group input, .form-group textarea, .form-group select {
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); border-radius: var(--radius);
+      padding: 0.6rem 0.85rem; font-size: 0.88rem;
+    }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+      outline: none; border-color: var(--accent);
+    }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .form-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1rem; }
+
+    /* ── Auth panel ── */
+    .auth-panel {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.5rem; margin-bottom: 2rem;
+    }
+    .auth-panel h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .auth-panel p  { font-size: 0.82rem; color: var(--muted); margin-bottom: 1rem; }
+    .token-row { display: flex; gap: 0.75rem; }
+    .token-row input {
+      flex: 1; background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); border-radius: var(--radius);
+      padding: 0.6rem 0.85rem; font-size: 0.85rem; font-family: monospace;
+    }
+    .token-row input:focus { outline: none; border-color: var(--accent); }
+
+    /* ── Admin tabs ── */
+    .admin-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+    .admin-tab {
+      background: none; border: none; color: var(--muted);
+      font-size: 0.85rem; font-weight: 500; padding: 0.75rem 1.1rem;
+      cursor: pointer; border-bottom: 2px solid transparent;
+    }
+    .admin-tab:hover  { color: var(--text); }
+    .admin-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .admin-panel { display: none; }
+    .admin-panel.active { display: block; }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+    th { text-align: left; padding: 0.6rem 0.9rem; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); }
+    td { padding: 0.6rem 0.9rem; border-bottom: 1px solid #21262d; color: var(--muted); vertical-align: middle; }
+    tr:hover td { background: #1f2937; }
+    td .td-name { font-weight: 600; color: var(--text); }
+    .method-badge {
+      display: inline-block; font-size: 0.68rem; font-weight: 700;
+      padding: 0.18rem 0.45rem; border-radius: 4px;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+
+    /* ── Health ── */
+    .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .health-card { text-align: center; padding: 1.5rem; }
+    .health-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .health-label { font-size: 0.75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.3rem; }
+    .health-value { font-size: 1.1rem; font-weight: 700; }
+    .status-healthy  { color: var(--green); }
+    .status-degraded { color: var(--yellow); }
+    .status-unknown  { color: var(--muted); }
+
+    /* ── Bulk lookup ── */
+    .bulk-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem; font-family: monospace;
+      font-size: 0.82rem; line-height: 1.6; color: var(--muted);
+      min-height: 120px; white-space: pre-wrap; word-break: break-all;
+    }
+
+    /* ── Alerts ── */
+    .alert {
+      padding: 0.75rem 1rem; border-radius: var(--radius);
+      font-size: 0.85rem; margin-bottom: 1rem;
+    }
+    .alert-success { background: #0d2a1a; color: var(--green); border: 1px solid #1a4a2a; }
+    .alert-error   { background: #2a0d0d; color: var(--red);   border: 1px solid #4a1a1a; }
+    .alert-info    { background: #0d1a2a; color: var(--blue);  border: 1px solid #1a2a4a; }
+
+    /* ── Loading spinner ── */
+    .spinner {
+      display: inline-block; width: 18px; height: 18px;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-center { display: flex; align-items: center; gap: 0.5rem; justify-content: center; padding: 2rem; color: var(--muted); }
+
+    /* ── Empty state ── */
+    .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+    .empty p { font-size: 0.9rem; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .nav-brand { display: none; }
+      .nav-tab { font-size: 0.8rem; padding: 1rem 0.6rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Navigation ─────────────────────────────────────────────────── -->
+<nav>
+  <span class="nav-brand">&#127830; Catalog Service</span>
+  <div class="nav-links">
+    <button class="nav-tab active" onclick="showSection('restaurants')">Restaurants</button>
+    <button class="nav-tab" onclick="showSection('admin')">Admin</button>
+    <button class="nav-tab" onclick="showSection('interservice')">Inter-Service</button>
+    <button class="nav-tab" onclick="showSection('health')">Health</button>
+  </div>
+  <div class="nav-right">
+    <span id="auth-badge" class="auth-badge unauthed">&#128274; No Auth</span>
+    <a href="/docs" target="_blank" class="btn-docs">Swagger UI &#8599;</a>
+  </div>
+</nav>
+
+<!-- ── Main content ────────────────────────────────────────────────── -->
+<main>
+
+  <!-- ════════════════════════════════════════════
+       SECTION 1 · RESTAURANTS BROWSE
+  ════════════════════════════════════════════ -->
+  <section id="sec-restaurants" class="section active">
+    <div class="section-header">
+      <div>
+        <h2>Restaurants</h2>
+        <p>Browse active restaurants and view their menus. Click a card to see full menu.</p>
+      </div>
+      <button class="btn btn-outline" onclick="loadRestaurants()">&#8635; Refresh</button>
+    </div>
+
+    <div class="filter-bar">
+      <input id="cuisine-filter" type="text" placeholder="Filter by cuisine (e.g. Italian, Asian…)" oninput="applyFilter()" />
+      <select id="status-filter" onchange="applyFilter()">
+        <option value="true">Active only</option>
+        <option value="false">Inactive only</option>
+        <option value="all">All restaurants</option>
+      </select>
+    </div>
+
+    <div id="restaurants-loading" class="loading-center" style="display:none">
+      <span class="spinner"></span> Loading restaurants…
+    </div>
+    <div id="restaurants-alert"></div>
+    <div id="restaurants-grid" class="grid"></div>
+  </section>
+
+  <!-- ════════════════════════════════════════════
+       SECTION 2 · ADMIN PANEL
+  ════════════════════════════════════════════ -->
+  <section id="sec-admin" class="section">
+    <!-- Auth -->
+    <div class="auth-panel">
+      <h3>&#128274; JWT Authentication</h3>
+      <p>
+        Write operations (create / update / delete) require a Bearer token from the Auth Service.
+        Paste your token below to unlock admin features.
+        In development mode (<code>AUTH_REQUIRED=false</code>) you can use any value.
+      </p>
+      <div class="token-row">
+        <input id="jwt-input" type="password" placeholder="Bearer token from Auth Service…" oninput="updateAuth()" />
+        <button class="btn btn-primary" onclick="clearAuth()">Clear</button>
+      </div>
+    </div>
+
+    <!-- Admin sub-tabs -->
+    <div class="admin-tabs">
+      <button class="admin-tab active" onclick="showAdminTab('create-restaurant')">Create Restaurant</button>
+      <button class="admin-tab" onclick="showAdminTab('create-item')">Add Menu Item</button>
+      <button class="admin-tab" onclick="showAdminTab('manage')">Manage</button>
+    </div>
+
+    <!-- Create Restaurant -->
+    <div id="admin-create-restaurant" class="admin-panel active">
+      <div class="card">
+        <div id="cr-alert"></div>
+        <form onsubmit="createRestaurant(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Restaurant Name *</label>
+              <input id="cr-name" type="text" placeholder="e.g. The Green Kitchen" required />
+            </div>
+            <div class="form-group">
+              <label>Cuisine Type</label>
+              <input id="cr-cuisine" type="text" placeholder="e.g. Italian, Asian Fusion" />
+            </div>
+            <div class="form-group full">
+              <label>Address *</label>
+              <input id="cr-address" type="text" placeholder="Full street address" required />
+            </div>
+            <div class="form-group full">
+              <label>Description</label>
+              <textarea id="cr-desc" placeholder="Brief description of the restaurant…"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Phone</label>
+              <input id="cr-phone" type="text" placeholder="+94 77 123 4567" />
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input id="cr-email" type="email" placeholder="restaurant@example.com" />
+            </div>
+            <div class="form-group">
+              <label>Delivery Time (minutes)</label>
+              <input id="cr-delivery" type="number" value="30" min="5" max="180" />
+            </div>
+            <div class="form-group">
+              <label>Minimum Order (LKR)</label>
+              <input id="cr-minorder" type="number" value="0" min="0" step="0.01" />
+            </div>
+            <div class="form-group full">
+              <label>Image URL</label>
+              <input id="cr-image" type="url" placeholder="https://…" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline" onclick="resetForm('create-restaurant')">Reset</button>
+            <button type="submit" class="btn btn-primary">&#43; Create Restaurant</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Add Menu Item -->
+    <div id="admin-create-item" class="admin-panel">
+      <div class="card">
+        <div id="ci-alert"></div>
+        <form onsubmit="createMenuItem(event)">
+          <div class="form-grid">
+            <div class="form-group full">
+              <label>Restaurant ID *</label>
+              <input id="ci-restid" type="text" placeholder="Paste restaurant UUID" required />
+            </div>
+            <div class="form-group">
+              <label>Item Name *</label>
+              <input id="ci-name" type="text" placeholder="e.g. Margherita Pizza" required />
+            </div>
+            <div class="form-group">
+              <label>Price (LKR) *</label>
+              <input id="ci-price" type="number" placeholder="0.00" step="0.01" min="0.01" required />
+            </div>
+            <div class="form-group">
+              <label>Category</label>
+              <input id="ci-category" type="text" placeholder="e.g. Main Course, Dessert" />
+            </div>
+            <div class="form-group">
+              <label>Preparation Time (min)</label>
+              <input id="ci-preptime" type="number" value="15" min="1" max="120" />
+            </div>
+            <div class="form-group full">
+              <label>Description</label>
+              <textarea id="ci-desc" placeholder="Describe the dish…"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Calories</label>
+              <input id="ci-calories" type="number" placeholder="Optional" min="0" />
+            </div>
+            <div class="form-group">
+              <label>Image URL</label>
+              <input id="ci-image" type="url" placeholder="https://…" />
+            </div>
+            <div class="form-group">
+              <label>Vegetarian?</label>
+              <select id="ci-veg">
+                <option value="false">No</option>
+                <option value="true">Yes</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Available?</label>
+              <select id="ci-avail">
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline" onclick="resetForm('create-item')">Reset</button>
+            <button type="submit" class="btn btn-primary">&#43; Add Menu Item</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Manage Existing -->
+    <div id="admin-manage" class="admin-panel">
+      <div id="manage-alert"></div>
+      <h3 style="font-size:0.95rem;font-weight:700;margin-bottom:1rem;">All Restaurants</h3>
+      <div id="manage-loading" class="loading-center" style="display:none"><span class="spinner"></span> Loading…</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th><th>Cuisine</th><th>Delivery</th><th>Status</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="manage-table"></tbody>
+        </table>
+      </div>
+      <div id="manage-empty" class="empty" style="display:none">
+        <div class="empty-icon">&#128203;</div>
+        <p>No restaurants found. Create one in the tab above.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════
+       SECTION 3 · INTER-SERVICE DEMO
+  ════════════════════════════════════════════ -->
+  <section id="sec-interservice" class="section">
+    <div class="section-header">
+      <div>
+        <h2>Inter-Service Communication</h2>
+        <p>Demonstrates the <code>POST /api/v1/menu-items/bulk-lookup</code> endpoint used by the Order Service.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1.5rem;">
+      <h3 style="font-size:0.95rem;font-weight:700;margin-bottom:0.5rem;">&#128279; How it works</h3>
+      <p style="font-size:0.85rem;color:var(--muted);line-height:1.6;margin-bottom:1rem;">
+        When a customer places an order, the <strong>Order Management Service</strong> calls this endpoint
+        with a list of menu item IDs. The Catalog Service validates each item exists and is currently
+        available, then returns the item details (including price) for order total calculation.
+        Items that are unavailable or not found are returned in the <code>unavailable_ids</code> list.
+      </p>
+      <div class="alert alert-info">
+        &#8505; This is an <strong>internal service endpoint</strong> — no JWT required.
+        The Order Service uses it server-to-server with an <code>X-Internal-Service</code> header.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-header" style="margin-bottom:1rem;">
+        <h3 style="font-size:0.95rem;font-weight:700;">Try Bulk Lookup</h3>
+        <button class="btn btn-outline btn-sm" onclick="loadSampleIds()">Load sample IDs</button>
+      </div>
+      <div class="form-group" style="margin-bottom:1rem;">
+        <label>Menu Item IDs (one per line, or comma-separated)</label>
+        <textarea id="bulk-ids" style="min-height:100px;font-family:monospace;font-size:0.82rem;"
+          placeholder="Paste menu item UUIDs here…"></textarea>
+      </div>
+      <div class="form-actions" style="margin-top:0;justify-content:flex-start;">
+        <button class="btn btn-primary" onclick="runBulkLookup()">&#9654; Run Bulk Lookup</button>
+        <button class="btn btn-outline" onclick="clearBulk()">Clear</button>
+      </div>
+    </div>
+
+    <div style="margin-top:1.5rem;">
+      <div class="section-header" style="margin-bottom:0.75rem;">
+        <h3 style="font-size:0.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Response</h3>
+        <span id="bulk-status" style="font-size:0.8rem;color:var(--muted);"></span>
+      </div>
+      <div id="bulk-result" class="bulk-box">Response will appear here…</div>
+    </div>
+
+    <!-- Auth Service integration info -->
+    <div class="card" style="margin-top:1.5rem;">
+      <h3 style="font-size:0.95rem;font-weight:700;margin-bottom:0.5rem;">&#128274; Auth Service Integration</h3>
+      <p style="font-size:0.85rem;color:var(--muted);line-height:1.6;margin-bottom:0.75rem;">
+        Write operations (POST/PUT/DELETE) are protected by calling the
+        <strong>Auth Service</strong> at <code>/api/v1/auth/verify</code> with the provided JWT.
+        The Auth Service validates the token and returns the decoded user payload.
+      </p>
+      <div class="form-group" style="max-width:400px;">
+        <label>Auth Service URL (from environment)</label>
+        <input id="auth-url-display" type="text" readonly style="opacity:0.6;cursor:default;" />
+      </div>
+      <button class="btn btn-outline btn-sm" style="margin-top:0.75rem;" onclick="pingAuthService()">
+        Ping Auth Service
+      </button>
+      <div id="auth-ping-result" style="margin-top:0.75rem;font-size:0.82rem;color:var(--muted);"></div>
+    </div>
+  </section>
+
+  <!-- ════════════════════════════════════════════
+       SECTION 4 · HEALTH
+  ════════════════════════════════════════════ -->
+  <section id="sec-health" class="section">
+    <div class="section-header">
+      <div>
+        <h2>Service Health</h2>
+        <p>Live liveness and readiness probes. Used by AWS ECS and the ALB health check.</p>
+      </div>
+      <button class="btn btn-outline" onclick="loadHealth()">&#8635; Refresh</button>
+    </div>
+
+    <div id="health-loading" class="loading-center" style="display:none"><span class="spinner"></span> Checking health…</div>
+    <div id="health-alert"></div>
+
+    <div id="health-grid" class="health-grid">
+      <div class="card health-card">
+        <div class="health-icon">&#128994;</div>
+        <div class="health-label">Service Status</div>
+        <div class="health-value status-unknown" id="h-status">—</div>
+      </div>
+      <div class="card health-card">
+        <div class="health-icon">&#128190;</div>
+        <div class="health-label">Database</div>
+        <div class="health-value status-unknown" id="h-db">—</div>
+      </div>
+      <div class="card health-card">
+        <div class="health-icon">&#127758;</div>
+        <div class="health-label">Environment</div>
+        <div class="health-value status-unknown" id="h-env">—</div>
+      </div>
+      <div class="card health-card">
+        <div class="health-icon">&#128204;</div>
+        <div class="health-label">Version</div>
+        <div class="health-value status-unknown" id="h-version">—</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:1rem;">
+      <h3 style="font-size:0.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem;">
+        Raw Health Response
+      </h3>
+      <div id="health-raw" class="bulk-box">Click "Refresh" to load…</div>
+    </div>
+
+    <!-- Cloud deployment info -->
+    <div style="margin-top:1.5rem;">
+      <h3 style="font-size:0.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem;">
+        Deployment Stack
+      </h3>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">
+        <div class="card" style="padding:1rem;">
+          <div style="font-size:1.2rem;margin-bottom:0.4rem;">&#9729;</div>
+          <div style="font-weight:700;font-size:0.88rem;margin-bottom:0.25rem;">AWS ECS Fargate</div>
+          <div style="font-size:0.78rem;color:var(--muted);">Serverless container orchestration</div>
+        </div>
+        <div class="card" style="padding:1rem;">
+          <div style="font-size:1.2rem;margin-bottom:0.4rem;">&#128230;</div>
+          <div style="font-weight:700;font-size:0.88rem;margin-bottom:0.25rem;">Amazon ECR</div>
+          <div style="font-size:0.78rem;color:var(--muted);">Private container registry</div>
+        </div>
+        <div class="card" style="padding:1rem;">
+          <div style="font-size:1.2rem;margin-bottom:0.4rem;">&#128296;</div>
+          <div style="font-weight:700;font-size:0.88rem;margin-bottom:0.25rem;">GitHub Actions</div>
+          <div style="font-size:0.78rem;color:var(--muted);">CI/CD: test → SAST → build → deploy</div>
+        </div>
+        <div class="card" style="padding:1rem;">
+          <div style="font-size:1.2rem;margin-bottom:0.4rem;">&#128737;</div>
+          <div style="font-weight:700;font-size:0.88rem;margin-bottom:0.25rem;">SonarCloud + Snyk</div>
+          <div style="font-size:0.78rem;color:var(--muted);">SAST &amp; dependency scanning (DevSecOps)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ── Restaurant Detail Modal ──────────────────────────────────── -->
+<div id="modal-overlay" class="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="rest-modal">
+    <div class="modal-header">
+      <div>
+        <h3 id="modal-name">Restaurant</h3>
+        <span id="modal-cuisine" style="font-size:0.8rem;color:var(--accent);font-weight:600;"></span>
+      </div>
+      <button class="modal-close" onclick="closeModalDirect()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div id="modal-loading" class="loading-center" style="display:none"><span class="spinner"></span> Loading menu…</div>
+      <div id="modal-info" style="margin-bottom:1rem;"></div>
+      <div class="menu-section-title">Menu</div>
+      <div id="modal-menu"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── JavaScript ──────────────────────────────────────────────── -->
+<script>
+  const API = '';   // same origin — no prefix needed
+  let jwtToken = '';
+  let allRestaurants = [];
+
+  // ── Auth ────────────────────────────────────────────────────────
+  function updateAuth() {
+    jwtToken = document.getElementById('jwt-input').value.trim();
+    const badge = document.getElementById('auth-badge');
+    if (jwtToken) {
+      badge.className = 'auth-badge authed';
+      badge.textContent = '🔓 Authenticated';
+    } else {
+      badge.className = 'auth-badge unauthed';
+      badge.textContent = '🔒 No Auth';
+    }
+  }
+  function clearAuth() {
+    document.getElementById('jwt-input').value = '';
+    updateAuth();
+  }
+
+  function authHeaders() {
+    const h = { 'Content-Type': 'application/json' };
+    if (jwtToken) h['Authorization'] = 'Bearer ' + jwtToken;
+    return h;
+  }
+
+  // ── Navigation ──────────────────────────────────────────────────
+  function showSection(name) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('sec-' + name).classList.add('active');
+    event.currentTarget.classList.add('active');
+
+    if (name === 'restaurants') loadRestaurants();
+    if (name === 'health')      loadHealth();
+    if (name === 'admin')       loadManageTable();
+    if (name === 'interservice') {
+      document.getElementById('auth-url-display').value = 'http://auth-service:8001  (configured via AUTH_SERVICE_URL env var)';
+    }
+  }
+
+  function showAdminTab(tab) {
+    document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('admin-' + tab).classList.add('active');
+    event.currentTarget.classList.add('active');
+    if (tab === 'manage') loadManageTable();
+  }
+
+  // ── Alert helpers ───────────────────────────────────────────────
+  function setAlert(id, type, msg) {
+    document.getElementById(id).innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+    setTimeout(() => { const el = document.getElementById(id); if (el) el.innerHTML = ''; }, 5000);
+  }
+
+  // ── Load Restaurants ─────────────────────────────────────────────
+  async function loadRestaurants() {
+    const grid = document.getElementById('restaurants-grid');
+    const loader = document.getElementById('restaurants-loading');
+    grid.innerHTML = ''; loader.style.display = 'flex';
+
+    try {
+      const resp = await fetch(`${API}/api/v1/restaurants?size=50`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      allRestaurants = data.items || [];
+      applyFilter();
+    } catch (e) {
+      setAlert('restaurants-alert', 'error', '&#9888; Failed to load restaurants: ' + e.message);
+    } finally {
+      loader.style.display = 'none';
+    }
+  }
+
+  function applyFilter() {
+    const cuisineQ = document.getElementById('cuisine-filter').value.toLowerCase();
+    const statusQ  = document.getElementById('status-filter').value;
+    const grid = document.getElementById('restaurants-grid');
+    grid.innerHTML = '';
+
+    let filtered = allRestaurants;
+    if (cuisineQ) filtered = filtered.filter(r => (r.cuisine_type||'').toLowerCase().includes(cuisineQ));
+    if (statusQ !== 'all') filtered = filtered.filter(r => String(r.is_active) === statusQ);
+
+    if (!filtered.length) {
+      grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">&#128203;</div><p>No restaurants match your filter.</p></div>';
+      return;
+    }
+
+    filtered.forEach(r => {
+      const card = document.createElement('div');
+      card.className = 'card rest-card';
+      card.innerHTML = `
+        <div class="rest-card-top">
+          <span class="rest-name">${esc(r.name)}</span>
+          <span class="rest-badge ${r.is_active ? 'badge-active' : 'badge-inactive'}">${r.is_active ? 'Open' : 'Closed'}</span>
+        </div>
+        ${r.cuisine_type ? `<div class="rest-cuisine">${esc(r.cuisine_type)}</div>` : ''}
+        <div class="rest-desc">${esc(r.description || 'No description provided.')}</div>
+        <div class="rest-meta">
+          <span>&#128344; ${r.delivery_time_minutes} min</span>
+          <span>&#128176; Min. LKR ${r.minimum_order.toFixed(2)}</span>
+          ${r.phone ? `<span>&#128222; ${esc(r.phone)}</span>` : ''}
+        </div>
+        <div style="margin-top:0.75rem;font-size:0.7rem;color:var(--muted);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+          ID: ${esc(r.id)}
+        </div>`;
+      card.addEventListener('click', () => openRestaurant(r));
+      grid.appendChild(card);
+    });
+  }
+
+  // ── Restaurant Modal ─────────────────────────────────────────────
+  async function openRestaurant(r) {
+    document.getElementById('modal-name').textContent = r.name;
+    document.getElementById('modal-cuisine').textContent = r.cuisine_type || '';
+    document.getElementById('modal-info').innerHTML = `
+      <div style="font-size:0.82rem;color:var(--muted);display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;">
+        <span><strong>Address:</strong> ${esc(r.address)}</span>
+        <span><strong>Delivery:</strong> ${r.delivery_time_minutes} min</span>
+        ${r.phone ? `<span><strong>Phone:</strong> ${esc(r.phone)}</span>` : ''}
+        ${r.email ? `<span><strong>Email:</strong> ${esc(r.email)}</span>` : ''}
+        <span><strong>Min. Order:</strong> LKR ${r.minimum_order.toFixed(2)}</span>
+        <span><strong>Status:</strong> ${r.is_active ? '&#128994; Open' : '&#128308; Closed'}</span>
+      </div>`;
+    document.getElementById('modal-menu').innerHTML = '';
+    document.getElementById('modal-loading').style.display = 'flex';
+    document.getElementById('modal-overlay').classList.add('open');
+
+    try {
+      const resp = await fetch(`${API}/api/v1/restaurants/${r.id}`);
+      const data = await resp.json();
+      const items = data.menu_items || [];
+      document.getElementById('modal-loading').style.display = 'none';
+
+      if (!items.length) {
+        document.getElementById('modal-menu').innerHTML = '<p style="color:var(--muted);font-size:0.85rem;padding:1rem 0;">No menu items yet.</p>';
+        return;
+      }
+
+      const byCategory = {};
+      items.forEach(it => {
+        const cat = it.category || 'Other';
+        if (!byCategory[cat]) byCategory[cat] = [];
+        byCategory[cat].push(it);
+      });
+
+      let html = '';
+      Object.entries(byCategory).forEach(([cat, its]) => {
+        html += `<div class="menu-section-title">${esc(cat)}</div>`;
+        its.forEach(it => {
+          html += `
+            <div class="menu-item-row">
+              <div>
+                <span class="menu-item-name">${esc(it.name)}</span>
+                ${it.is_vegetarian ? '<span class="menu-item-veg">VEG</span>' : ''}
+                ${it.description ? `<div class="menu-item-cat">${esc(it.description)}</div>` : ''}
+                <div class="menu-item-cat">&#128337; ${it.preparation_time_minutes} min${it.calories ? ` &bull; ${it.calories} kcal` : ''}</div>
+              </div>
+              <span class="menu-item-price">LKR ${it.price.toFixed(2)}</span>
+            </div>`;
+        });
+      });
+      document.getElementById('modal-menu').innerHTML = html;
+    } catch (e) {
+      document.getElementById('modal-loading').style.display = 'none';
+      document.getElementById('modal-menu').innerHTML = `<div class="alert alert-error">Failed to load menu: ${e.message}</div>`;
+    }
+  }
+
+  function closeModal(e) { if (e.target === document.getElementById('modal-overlay')) closeModalDirect(); }
+  function closeModalDirect() { document.getElementById('modal-overlay').classList.remove('open'); }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModalDirect(); });
+
+  // ── Create Restaurant ────────────────────────────────────────────
+  async function createRestaurant(e) {
+    e.preventDefault();
+    const payload = {
+      name:                    document.getElementById('cr-name').value.trim(),
+      address:                 document.getElementById('cr-address').value.trim(),
+      description:             document.getElementById('cr-desc').value.trim() || null,
+      phone:                   document.getElementById('cr-phone').value.trim() || null,
+      email:                   document.getElementById('cr-email').value.trim() || null,
+      cuisine_type:            document.getElementById('cr-cuisine').value.trim() || null,
+      image_url:               document.getElementById('cr-image').value.trim() || null,
+      delivery_time_minutes:   parseInt(document.getElementById('cr-delivery').value),
+      minimum_order:           parseFloat(document.getElementById('cr-minorder').value),
+    };
+
+    try {
+      const resp = await fetch(`${API}/api/v1/restaurants`, {
+        method: 'POST', headers: authHeaders(), body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || resp.statusText);
+      setAlert('cr-alert', 'success', `&#10003; Restaurant "${data.name}" created! ID: ${data.id}`);
+      e.target.reset();
+    } catch (err) {
+      setAlert('cr-alert', 'error', '&#9888; ' + err.message);
+    }
+  }
+
+  // ── Create Menu Item ─────────────────────────────────────────────
+  async function createMenuItem(e) {
+    e.preventDefault();
+    const payload = {
+      restaurant_id:            document.getElementById('ci-restid').value.trim(),
+      name:                     document.getElementById('ci-name').value.trim(),
+      price:                    parseFloat(document.getElementById('ci-price').value),
+      category:                 document.getElementById('ci-category').value.trim() || null,
+      description:              document.getElementById('ci-desc').value.trim() || null,
+      preparation_time_minutes: parseInt(document.getElementById('ci-preptime').value),
+      is_vegetarian:            document.getElementById('ci-veg').value === 'true',
+      is_available:             document.getElementById('ci-avail').value === 'true',
+      calories:                 document.getElementById('ci-calories').value ? parseInt(document.getElementById('ci-calories').value) : null,
+      image_url:                document.getElementById('ci-image').value.trim() || null,
+    };
+
+    try {
+      const resp = await fetch(`${API}/api/v1/menu-items`, {
+        method: 'POST', headers: authHeaders(), body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || resp.statusText);
+      setAlert('ci-alert', 'success', `&#10003; Menu item "${data.name}" added! ID: ${data.id}`);
+      e.target.reset();
+    } catch (err) {
+      setAlert('ci-alert', 'error', '&#9888; ' + err.message);
+    }
+  }
+
+  // ── Manage Table ─────────────────────────────────────────────────
+  async function loadManageTable() {
+    const tbody = document.getElementById('manage-table');
+    const loader = document.getElementById('manage-loading');
+    const empty  = document.getElementById('manage-empty');
+    tbody.innerHTML = ''; loader.style.display = 'flex'; empty.style.display = 'none';
+
+    try {
+      const resp = await fetch(`${API}/api/v1/restaurants?size=50`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      const items = data.items || [];
+      loader.style.display = 'none';
+
+      if (!items.length) { empty.style.display = 'block'; return; }
+
+      items.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>
+            <div class="td-name">${esc(r.name)}</div>
+            <div style="font-size:0.7rem;font-family:monospace;color:var(--muted);margin-top:0.15rem;">${esc(r.id)}</div>
+          </td>
+          <td>${esc(r.cuisine_type || '—')}</td>
+          <td>${r.delivery_time_minutes} min</td>
+          <td><span class="rest-badge ${r.is_active ? 'badge-active' : 'badge-inactive'}">${r.is_active ? 'Active' : 'Inactive'}</span></td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-outline btn-sm" onclick="toggleActive('${r.id}', ${!r.is_active})">
+              ${r.is_active ? 'Deactivate' : 'Activate'}
+            </button>
+            &nbsp;
+            <button class="btn btn-danger btn-sm" onclick="deleteRestaurant('${r.id}', '${esc(r.name)}')">Delete</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    } catch (e) {
+      loader.style.display = 'none';
+      setAlert('manage-alert', 'error', '&#9888; ' + e.message);
+    }
+  }
+
+  async function toggleActive(id, newState) {
+    try {
+      const resp = await fetch(`${API}/api/v1/restaurants/${id}`, {
+        method: 'PUT', headers: authHeaders(), body: JSON.stringify({ is_active: newState }),
+      });
+      if (!resp.ok) { const d = await resp.json(); throw new Error(d.detail); }
+      loadManageTable();
+    } catch (e) {
+      setAlert('manage-alert', 'error', '&#9888; ' + e.message);
+    }
+  }
+
+  async function deleteRestaurant(id, name) {
+    if (!confirm(`Soft-delete "${name}"? It will be marked inactive.`)) return;
+    try {
+      const resp = await fetch(`${API}/api/v1/restaurants/${id}`, {
+        method: 'DELETE', headers: authHeaders(),
+      });
+      if (resp.status === 204) {
+        setAlert('manage-alert', 'success', `&#10003; "${name}" deleted.`);
+        loadManageTable();
+      } else {
+        const d = await resp.json();
+        throw new Error(d.detail);
+      }
+    } catch (e) {
+      setAlert('manage-alert', 'error', '&#9888; ' + e.message);
+    }
+  }
+
+  // ── Bulk Lookup ───────────────────────────────────────────────────
+  async function runBulkLookup() {
+    const raw = document.getElementById('bulk-ids').value.trim();
+    if (!raw) { document.getElementById('bulk-result').textContent = 'Please enter at least one item ID.'; return; }
+
+    const ids = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+    const resultEl = document.getElementById('bulk-result');
+    const statusEl = document.getElementById('bulk-status');
+    resultEl.textContent = 'Running…'; statusEl.textContent = '';
+
+    const t0 = Date.now();
+    try {
+      const resp = await fetch(`${API}/api/v1/menu-items/bulk-lookup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Internal-Service': 'order-service' },
+        body: JSON.stringify({ item_ids: ids }),
+      });
+      const data = await resp.json();
+      const elapsed = Date.now() - t0;
+      statusEl.textContent = `HTTP ${resp.status} · ${elapsed}ms`;
+      resultEl.textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+      resultEl.textContent = 'Error: ' + e.message;
+    }
+  }
+
+  async function loadSampleIds() {
+    try {
+      const resp = await fetch(`${API}/api/v1/menu-items?size=3`);
+      const data = await resp.json();
+      const ids = (data.items || []).map(i => i.id).join('\n');
+      document.getElementById('bulk-ids').value = ids || '(no menu items found — create some first)';
+    } catch (e) {
+      document.getElementById('bulk-ids').value = 'Error loading items: ' + e.message;
+    }
+  }
+
+  function clearBulk() {
+    document.getElementById('bulk-ids').value = '';
+    document.getElementById('bulk-result').textContent = 'Response will appear here…';
+    document.getElementById('bulk-status').textContent = '';
+  }
+
+  async function pingAuthService() {
+    const el = document.getElementById('auth-ping-result');
+    el.textContent = 'Pinging…';
+    try {
+      const resp = await fetch(`${API}/health`);
+      const data = await resp.json();
+      el.innerHTML = `<span style="color:var(--green)">&#10003; Catalog /health responded: ${JSON.stringify(data)}</span>`;
+    } catch (e) {
+      el.innerHTML = `<span style="color:var(--red)">&#9888; ${e.message}</span>`;
+    }
+  }
+
+  // ── Health ────────────────────────────────────────────────────────
+  async function loadHealth() {
+    const loader = document.getElementById('health-loading');
+    loader.style.display = 'flex';
+    ['h-status','h-db','h-env','h-version'].forEach(id => {
+      const el = document.getElementById(id);
+      el.textContent = '…'; el.className = 'health-value status-unknown';
+    });
+
+    try {
+      const resp = await fetch(`${API}/health`);
+      const data = await resp.json();
+
+      const set = (id, val, cls) => {
+        const el = document.getElementById(id);
+        el.textContent = val; el.className = `health-value ${cls}`;
+      };
+
+      const sc = data.status === 'healthy' ? 'status-healthy' : 'status-degraded';
+      const dc = data.database === 'healthy' ? 'status-healthy' : 'status-degraded';
+
+      set('h-status',  data.status,      sc);
+      set('h-db',      data.database,    dc);
+      set('h-env',     data.environment, 'status-unknown');
+      set('h-version', data.version,     'status-unknown');
+
+      document.getElementById('health-raw').textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+      setAlert('health-alert', 'error', '&#9888; Health check failed: ' + e.message);
+      document.getElementById('health-raw').textContent = 'Error: ' + e.message;
+    } finally {
+      loader.style.display = 'none';
+    }
+  }
+
+  // ── Utility ────────────────────────────────────────────────────────
+  function esc(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function resetForm(name) {
+    if (name === 'create-restaurant') {
+      ['cr-name','cr-cuisine','cr-address','cr-desc','cr-phone','cr-email','cr-image'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('cr-delivery').value = '30';
+      document.getElementById('cr-minorder').value = '0';
+    } else {
+      ['ci-restid','ci-name','ci-price','ci-category','ci-desc','ci-calories','ci-image'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('ci-preptime').value = '15';
+    }
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────
+  loadRestaurants();
+</script>
+</body>
+</html>

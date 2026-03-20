@@ -7,11 +7,11 @@ on:
     branches: [main]
 
 env:
-  AWS_REGION: ap-southeast-1          # Change to your AWS region
-  ECR_REPOSITORY: catalog-service     # Change to your ECR repository name
-  ECS_CLUSTER: food-delivery-cluster  # Change to your ECS cluster name
-  ECS_SERVICE: catalog-service        # Change to your ECS service name
-  CONTAINER_NAME: catalog-service     # Container name in task definition
+  AWS_REGION: ap-southeast-1
+  ECR_REPOSITORY: catalog-service
+  ECS_CLUSTER: food-delivery-cluster
+  ECS_SERVICE: food-delivery-service
+  CONTAINER_NAME: catalog-service
 
 jobs:
   # ── Job 1: Run Tests ───────────────────────────────────────────────────────
@@ -146,7 +146,7 @@ jobs:
       - name: Download task definition
         run: |
           aws ecs describe-task-definition \
-            --task-definition ${{ env.ECS_SERVICE }} \
+            --task-definition food-delivery \
             --query taskDefinition > task-definition.json
 
       - name: Update ECS task definition with new image

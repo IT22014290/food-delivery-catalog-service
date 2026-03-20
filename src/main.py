@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+from pathlib import Path
 import os
 import logging
 
@@ -121,4 +122,5 @@ app.include_router(restaurants.router, prefix="/api/v1/restaurants", tags=["Rest
 app.include_router(menu_items.router, prefix="/api/v1/menu-items", tags=["Menu Items"])
 
 # --- Frontend (must be mounted AFTER all API routes) ---
-app.mount("/ui", StaticFiles(directory="src/static", html=True), name="frontend")
+_static_dir = Path(__file__).parent / "static"
+app.mount("/ui", StaticFiles(directory=str(_static_dir), html=True), name="frontend")

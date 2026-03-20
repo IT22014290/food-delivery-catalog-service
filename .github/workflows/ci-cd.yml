@@ -8,7 +8,7 @@ on:
 
 env:
   AWS_REGION: ap-southeast-1
-  ECR_REPOSITORY: catalog-service
+  ECR_REPOSITORY: food-delivery-catalog-service
   ECS_CLUSTER: food-delivery-cluster
   ECS_SERVICE: food-delivery-service
   CONTAINER_NAME: food-delivery
